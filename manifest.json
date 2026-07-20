@@ -1,0 +1,15 @@
+{
+  "name": "Omlin Consultancy — Storage Charge Calculator",
+  "short_name": "Omlin Calc",
+  "description": "Storage Charge Calculator — Omlin Consultancy Ltd",
+  "start_url": "app.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EDF0F1",
+  "theme_color": "#153152",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
