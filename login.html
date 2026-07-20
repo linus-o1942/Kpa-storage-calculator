@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In — Omlin Consultancy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <a class="brand-row" href="login.html">
+      <span class="brand-logo">
+        <svg width="22" height="22" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="12" r="4.5" stroke="#C9A24A" stroke-width="2.2"/>
+          <line x1="24" y1="16.5" x2="24" y2="38" stroke="#C9A24A" stroke-width="2.2"/>
+          <line x1="15" y1="22" x2="33" y2="22" stroke="#C9A24A" stroke-width="2.2"/>
+          <path d="M12 28c0 7 5.4 12.6 12 12.6S36 35 36 28" stroke="#C9A24A" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="brand-name">
+        <span class="co">OMLIN CONSULTANCY LTD</span>
+        <span class="tag">Shipping · Customs · Logistics</span>
+      </span>
+    </a>
+    <nav class="top-nav">
+      <a href="login.html" class="active">Log In</a>
+      <a href="signup.html">Sign Up</a>
+    </nav>
+  </div>
+</header>
+
+<main style="max-width:420px;">
+  <div class="panel" style="margin-top:36px;">
+    <h2>Welcome back</h2>
+    <p class="sub">Log in to access the Storage Charge Calculator and your subscription.</p>
+
+    <p class="msg error" id="errMsg"></p>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn block" id="loginBtn">Log In</button>
+    </form>
+
+    <p class="auth-link">Don't have an account? <a href="signup.html">Sign up</a></p>
+  </div>
+</main>
+
+<footer class="app-footer"><p>Powered by Omlin Consultancy</p></footer>
+
+<script type="module">
+  import { logIn, isAdminUser } from "./js/auth.js";
+
+  const form = document.getElementById('loginForm');
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('errMsg');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.classList.remove('show');
+    btn.disabled = true;
+    btn.textContent = "Logging in…";
+    try{
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const user = await logIn(email, password);
+      window.location.href = "app.html";
+    }catch(ex){
+      err.textContent = friendlyError(ex.code);
+      err.classList.add('show');
+      btn.disabled = false;
+      btn.textContent = "Log In";
+    }
+  });
+
+  function friendlyError(code){
+    const map = {
+      'auth/invalid-credential': 'Incorrect email or password.',
+      'auth/invalid-email': 'Please enter a valid email address.',
+      'auth/user-not-found': 'No account found with that email.',
+      'auth/wrong-password': 'Incorrect password.',
+      'auth/too-many-requests': 'Too many attempts — please wait a moment and try again.'
+    };
+    return map[code] || 'Could not log in. Please check your details and try again.';
+  }
+</script>
+</body>
+</html>

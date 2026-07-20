@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscribe — Omlin Consultancy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="top"><div class="top-inner" id="navRoot"></div></header>
+
+<main class="wide" id="mainContent" style="display:none;">
+  <div class="panel" style="text-align:center;">
+    <h2 style="margin-bottom:2px;">Subscribe to unlock the Calculator</h2>
+    <p class="sub" style="max-width:560px;margin-left:auto;margin-right:auto;">Choose a plan, pay via M-Pesa, then send your confirmation message on WhatsApp. We manually verify every payment and activate your account — usually within a few minutes.</p>
+  </div>
+
+  <div class="plans-grid">
+    <div class="plan-card">
+      <h3>2 Weeks</h3>
+      <div class="price">KSh 100</div>
+      <div class="days">14 days of full access</div>
+      <a class="btn wa block" id="wa2weeks" target="_blank" rel="noopener">Pay &amp; Request Activation</a>
+    </div>
+    <div class="plan-card featured">
+      <div class="badge-top">Best Value</div>
+      <h3>1 Month</h3>
+      <div class="price">KSh 150</div>
+      <div class="days">30 days of full access</div>
+      <a class="btn wa block" id="wa1month" target="_blank" rel="noopener">Pay &amp; Request Activation</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>How it works</h2>
+    <div class="till-box">
+      <div class="label">M-Pesa Till Number</div>
+      <div class="num" id="tillNumberDisplay">3266806</div>
+    </div>
+    <ol class="steps">
+      <li>Go to M-Pesa on your phone &rarr; Lipa na M-Pesa &rarr; Buy Goods and Services.</li>
+      <li>Enter Till Number <b>3266806</b> and the amount for your chosen plan (KSh 100 or KSh 150).</li>
+      <li>Tap "Pay &amp; Request Activation" above for your plan — this opens WhatsApp with a message pre-filled for you.</li>
+      <li>Forward your M-Pesa confirmation SMS in the same WhatsApp chat.</li>
+      <li>We verify the payment in our M-Pesa app and activate your subscription — you'll see it reflected automatically on your <a href="account.html">My Subscription</a> page, no further action needed.</li>
+    </ol>
+  </div>
+</main>
+
+<div class="loading-screen" id="loadingScreen">Loading…</div>
+
+<footer class="app-footer"><p>Powered by Omlin Consultancy</p></footer>
+
+<script type="module">
+  import { requireLogin } from "./js/guard.js";
+  import { PAYMENT_INFO, PLANS } from "./js/firebase-config.js";
+
+  const navRoot = document.getElementById('navRoot');
+
+  requireLogin(navRoot, "subscribe").then(({ user, profile }) => {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+    document.getElementById('tillNumberDisplay').textContent = PAYMENT_INFO.tillNumber;
+
+    const name = (profile && profile.name) || (user && user.displayName) || '';
+    const email = (profile && profile.email) || (user && user.email) || '';
+
+    function buildLink(planKey){
+      const plan = PLANS[planKey];
+      const message =
+        `Hello Omlin Consultancy, I would like to subscribe to the ${plan.label} plan (KSh ${plan.price}).\n\n` +
+        `Name: ${name}\nAccount email: ${email}\n\n` +
+        `I have paid via M-Pesa Till Number ${PAYMENT_INFO.tillNumber}. My M-Pesa confirmation message is below — please verify and activate my subscription:\n\n[paste your M-Pesa confirmation SMS here]`;
+      return "https://wa.me/" + PAYMENT_INFO.whatsappNumber + "?text=" + encodeURIComponent(message);
+    }
+
+    document.getElementById('wa2weeks').href = buildLink("2 Weeks");
+    document.getElementById('wa1month').href = buildLink("1 Month");
+  });
+</script>
+</body>
+</html>

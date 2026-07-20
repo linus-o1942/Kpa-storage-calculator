@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage Charge Calculator — Omlin Consultancy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  :root{
+    --free:#9AA5AD; --free-bg:#EEF0F1;
+    --tier1:#2F7DA6; --tier1-bg:#E4F0F6;
+    --tier2:#D97B2E; --tier2-bg:#FBEADC;
+  }
+  #calcMain{ max-width:1240px; }
+
+  /* ---------- ADD PANEL ---------- */
+  .add-panel{ background:var(--panel); border:1px solid var(--hairline); border-radius:var(--radius); padding:18px 20px; margin-bottom:22px; box-shadow:0 1px 2px rgba(20,31,41,0.04); }
+  .add-panel h2{ font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 14px; display:flex; align-items:center; gap:8px; }
+  .add-panel h2::before{ content:""; width:8px;height:8px; background:var(--brand-gold); display:inline-block; }
+  .add-grid{ display:grid; grid-template-columns: 1.3fr 0.8fr 1.3fr 1fr auto; gap:12px; align-items:end; }
+  .add-panel .field label{ display:block; font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:5px; }
+  .add-panel .field input, .add-panel .field select{ width:100%; font-family:var(--mono); font-size:14px; padding:9px 10px; border:1px solid var(--hairline); border-radius:2px; background:#fff; color:var(--ink); }
+  .add-panel .field input:focus, .add-panel .field select:focus{ outline:2px solid var(--tier1); outline-offset:-1px; border-color:var(--tier1); }
+  button.add-btn{ font-family:var(--sans); font-weight:600; font-size:13.5px; background:var(--brand-navy); color:#fff; border:none; border-radius:2px; padding:10px 20px; cursor:pointer; white-space:nowrap; transition:background .15s ease; }
+  button.add-btn:hover{ background:var(--brand-navy-deep); }
+
+  /* ---------- TABLE ---------- */
+  .table-wrap{ background:var(--panel); border:1px solid var(--hairline); border-radius:var(--radius); overflow:hidden; box-shadow:0 1px 2px rgba(20,31,41,0.04); }
+  #calcMain table{ width:100%; border-collapse:collapse; }
+  #calcMain thead th{ background:#F6F7F8; border-bottom:1px solid var(--hairline); font-family:var(--mono); font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft); text-align:left; padding:10px 12px; white-space:nowrap; }
+  #calcMain tbody tr.row{ border-bottom:1px solid var(--hairline); cursor:pointer; transition:background .1s ease; }
+  #calcMain tbody tr.row:hover{ background:#F7FAFB; }
+  #calcMain tbody tr.row.expanded{ background:#F3F8FA; }
+  #calcMain td{ padding:12px; font-size:13.5px; vertical-align:middle; }
+  td.mono{ font-family:var(--mono); }
+  .container-no{ font-family:var(--mono); font-weight:700; letter-spacing:.02em; }
+  .badge{ display:inline-block; font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; padding:3px 7px; border-radius:2px; font-weight:600; }
+  .badge.transit{ background:var(--tier1-bg); color:var(--tier1); }
+  .badge.local{ background:var(--free-bg); color:var(--ink-soft); }
+  .badge.special{ background:var(--tier2-bg); color:var(--tier2); }
+
+  .gauge-cell{ min-width:190px; }
+  .gauge{ display:flex; height:9px; width:100%; border-radius:2px; overflow:hidden; background:#E7E9EA; border:1px solid var(--hairline); }
+  .gauge .seg{ height:100%; min-width:2px; }
+  .gauge .seg.free{ background:var(--free); }
+  .gauge .seg.tier1{ background:var(--tier1); }
+  .gauge .seg.tier2{ background:var(--tier2); }
+  .gauge-caption{ font-family:var(--mono); font-size:10px; color:var(--ink-soft); margin-top:4px; white-space:nowrap; }
+
+  .total-amt{ font-family:var(--mono); font-weight:700; font-size:14.5px; }
+  .days-payable{ font-family:var(--mono); font-weight:600; }
+  .days-payable.zero{ color:var(--ok); }
+  .days-payable.pos{ color:var(--tier2); }
+
+  .del-btn{ background:none; border:1px solid var(--hairline); color:var(--ink-soft); border-radius:2px; width:26px;height:26px; cursor:pointer; font-size:14px; line-height:1; }
+  .del-btn:hover{ border-color:var(--danger); color:var(--danger); background:#FBEDEB; }
+
+  .expand-icon{ display:inline-block; font-family:var(--mono); font-size:11px; color:var(--ink-soft); transition:transform .15s ease; margin-right:4px; }
+  tr.expanded .expand-icon{ transform:rotate(90deg); }
+
+  tr.detail td{ padding:0; background:#FBFCFC; }
+  .detail-inner{ padding:16px 20px 20px 40px; display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+  .tier-card{ border:1px solid var(--hairline); border-radius:var(--radius); background:#fff; padding:12px 14px; border-top:3px solid var(--free); }
+  .tier-card.t1{ border-top-color:var(--tier1); }
+  .tier-card.t2{ border-top-color:var(--tier2); }
+  .tier-card h3{ margin:0 0 8px; font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); }
+  .tier-card .dates{ font-family:var(--mono); font-size:13px; font-weight:600; color:var(--ink); margin-bottom:8px; }
+  .tier-card .dates .arrow{ color:var(--ink-soft); margin:0 4px; }
+  .tier-card .metrics{ display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); border-top:1px dashed var(--hairline); padding-top:8px; }
+  .tier-card .metrics b{ font-family:var(--mono); color:var(--ink); font-size:13px; }
+  .tier-card.inactive{ opacity:.45; }
+
+  .remarshal-line{ grid-column:1 / -1; display:flex; justify-content:space-between; align-items:center; background:#fff; border:1px solid var(--hairline); border-radius:var(--radius); padding:10px 14px; font-size:12.5px; }
+  .remarshal-line b{ font-family:var(--mono); }
+
+  #calcMain tfoot td{ background:#F6F7F8; border-top:2px solid var(--brand-navy); font-family:var(--mono); font-weight:700; font-size:14px; padding:14px 12px; }
+
+  .empty-state{ padding:40px 20px; text-align:center; color:var(--ink-soft); font-family:var(--mono); font-size:13px; }
+
+  .toolbar{ display:flex; justify-content:space-between; align-items:center; margin:16px 0 10px; flex-wrap:wrap; gap:10px; }
+  .toolbar .hint{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); }
+  .toolbar .actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .ghost-btn{ font-family:var(--mono); font-size:11.5px; letter-spacing:.03em; background:#fff; border:1px solid var(--hairline); color:var(--ink-soft); padding:7px 12px; border-radius:2px; cursor:pointer; }
+  .ghost-btn:hover{ border-color:var(--brand-navy); color:var(--brand-navy); }
+  .ghost-btn.gold{ border-color:var(--brand-gold); color:var(--brand-navy); background:var(--brand-gold-bg); font-weight:600; }
+  .ghost-btn.gold:hover{ background:var(--brand-gold-soft); border-color:var(--brand-gold); }
+  #fileInput{ display:none; }
+
+  .warn{ color:var(--danger); font-family:var(--mono); font-size:11px; }
+
+  .upload-panel{ background:var(--panel); border:1px solid var(--hairline); border-left:3px solid var(--brand-navy); border-radius:var(--radius); padding:16px 20px; margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .upload-panel .info h2{ font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 4px; }
+  .upload-panel .info p{ margin:0; font-size:12.5px; color:var(--ink-soft); max-width:560px; line-height:1.5; }
+  .upload-btn{ font-family:var(--sans); font-weight:600; font-size:13.5px; background:#fff; color:var(--brand-navy); border:1.5px solid var(--brand-navy); border-radius:2px; padding:9px 18px; cursor:pointer; white-space:nowrap; }
+  .upload-btn:hover{ background:var(--brand-gold-bg); border-color:var(--brand-gold); }
+  #docFileInput{ display:none; }
+  .parse-banner{ width:100%; margin-top:10px; padding:10px 12px; border-radius:2px; font-family:var(--mono); font-size:12px; display:none; }
+  .parse-banner.ok{ background:#E8F3EC; color:var(--ok); border:1px solid #C6E4CF; display:block; }
+  .parse-banner.err{ background:#FBEDEB; color:var(--danger); border:1px solid #F0CFC9; display:block; }
+
+  .page-title{ margin-bottom:18px; }
+  .page-title .eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 6px; }
+  .page-title h1{ font-family:var(--display); font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:0 0 6px; color:var(--brand-navy); }
+  .page-title .subtitle{ font-size:13px; color:var(--ink-soft); max-width:640px; line-height:1.5; margin:0; }
+
+  @media (max-width: 900px){
+    .add-grid{ grid-template-columns:1fr 1fr; }
+    .detail-inner{ grid-template-columns:1fr; padding-left:20px; }
+    #calcMain table thead{ display:none; }
+    #calcMain td{ display:block; padding:4px 12px; }
+    #calcMain tbody tr.row{ display:block; padding:8px 0; }
+    .gauge-cell{ min-width:unset; }
+  }
+
+  /* ---------- TABS ---------- */
+  .tabs-bar{ display:flex; gap:4px; border-bottom:2px solid var(--brand-navy); margin-bottom:22px; }
+  .tab-btn{ font-family:var(--sans); font-weight:600; font-size:13.5px; background:#EEF0F1; color:var(--ink-soft); border:1px solid var(--hairline); border-bottom:none; border-radius:4px 4px 0 0; padding:11px 20px; cursor:pointer; }
+  .tab-btn.active{ background:var(--brand-navy); color:#fff; }
+  .tab-panel{ }
+  .tab-panel.hidden{ display:none; }
+
+  .sub-section-title{ font-family:var(--sans); font-weight:700; font-size:16px; color:var(--brand-navy); margin:30px 0 12px; padding-top:14px; border-top:1px dashed var(--hairline); display:flex; align-items:center; gap:8px; }
+  .sub-section-title:first-of-type{ border-top:none; padding-top:0; margin-top:6px; }
+  .sub-section-title .tag{ font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; background:var(--brand-gold-bg); color:var(--brand-navy); padding:3px 8px; border-radius:2px; font-weight:600; }
+
+  .combined-total-bar{ display:flex; justify-content:flex-end; align-items:center; gap:14px; background:var(--brand-navy); color:#fff; padding:14px 20px; border-radius:var(--radius); margin-top:18px; font-family:var(--mono); }
+  .combined-total-bar .label{ font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.85; }
+  .combined-total-bar .amt{ font-size:19px; font-weight:700; }
+
+  /* ---------- OTHER CHARGES FORM ---------- */
+  .oc-add-grid{ display:grid; grid-template-columns: 1.1fr 1.3fr 0.8fr 0.8fr 0.9fr 1fr auto; gap:12px; align-items:end; }
+  .oc-add-grid .field.hidden{ display:none; }
+  .oc-add-grid .field.checkbox-field{ display:flex; align-items:center; gap:6px; padding-bottom:9px; }
+  .oc-add-grid .field.checkbox-field label{ margin:0; font-size:12px; }
+  @media (max-width: 1100px){ .oc-add-grid{ grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="top"><div class="top-inner" id="navRoot"></div></header>
+
+<main class="wide" id="calcMain" style="display:none;">
+
+  <div class="page-title">
+    <p class="eyebrow">Terminal Tariff · KPA Charges</p>
+    <h1>Storage Charge Calculator</h1>
+    <p class="subtitle">Storage and re-marshalling accrue by day. Reefer plug-in accrues by hour. All other charges are one-time and do not accrue over time.</p>
+  </div>
+
+  <div class="tabs-bar">
+    <button class="tab-btn active" id="tabBtn1" data-tab="tab1">Storage &amp; Remarshalling</button>
+    <button class="tab-btn" id="tabBtn2" data-tab="tab2">Other Charges</button>
+  </div>
+
+  <section id="tab1Panel" class="tab-panel">
+
+  <h2 class="sub-section-title">Containers <span class="tag">per day · tiered</span></h2>
+  <div style="margin:-4px 0 16px;"><input type="date" id="asOfDate" style="font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--hairline);border-radius:3px;"></div>
+
+  <section class="upload-panel">
+    <div class="info">
+      <h2>Upload container document</h2>
+      <p>Upload a saved KPA container-detail webpage (.html) to auto-fill Container Number, Size and Discharge Date below. Category is always selected manually.</p>
+    </div>
+    <div>
+      <button class="upload-btn" id="uploadDocBtn">Upload webpage document</button>
+      <input type="file" id="docFileInput" accept=".html,.htm,text/html">
+    </div>
+    <p class="parse-banner" id="parseBanner"></p>
+  </section>
+
+  <section class="add-panel">
+    <h2>Add container</h2>
+    <div class="add-grid">
+      <div class="field">
+        <label for="inNumber">Container number</label>
+        <input type="text" id="inNumber" placeholder="e.g. CAAU7085328" maxlength="20">
+      </div>
+      <div class="field">
+        <label for="inSize">Size</label>
+        <select id="inSize">
+          <option value="20">20'</option>
+          <option value="40" selected>40'</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="inCategory">Category</label>
+        <select id="inCategory">
+          <option value="Local Import">Local Import</option>
+          <option value="Transit Import" selected>Transit Import</option>
+          <option value="Dangerous Cargo">Dangerous Cargo</option>
+          <option value="Out of Gauge">Out of Gauge</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="inDate">Discharge date</label>
+        <input type="date" id="inDate">
+      </div>
+      <div class="field">
+        <button class="add-btn" id="addBtn">+ Add container</button>
+      </div>
+    </div>
+    <p class="warn" id="formWarn" style="display:none;margin:10px 0 0;"></p>
+  </section>
+
+  <div class="toolbar">
+    <span class="hint" id="countHint">0 containers</span>
+    <div class="actions">
+      <button class="ghost-btn gold" id="pdfBtn">Download PDF Report</button>
+      <button class="ghost-btn gold" id="wordBtn">Download Word Report</button>
+      <button class="ghost-btn" id="exportBtn">Export JSON</button>
+      <button class="ghost-btn" id="importBtn">Import JSON</button>
+      <button class="ghost-btn" id="exportCsvBtn">Export CSV</button>
+      <input type="file" id="fileInput" accept="application/json">
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Container</th>
+          <th>Size</th>
+          <th>Category</th>
+          <th>Discharge date</th>
+          <th>Elapsed</th>
+          <th>Storage timeline</th>
+          <th>Days payable</th>
+          <th>Total (US$)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="8" style="text-align:right;">TOTAL DUE</td>
+          <td id="grandTotal">$0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="empty-state" id="emptyState">No containers yet — add one above to begin.</div>
+  </div>
+
+  <h2 class="sub-section-title">Self-Propelled Units (RORO) <span class="tag">per unit · per day</span></h2>
+
+  <section class="add-panel">
+    <h2>Add self-propelled unit</h2>
+    <div class="add-grid" style="grid-template-columns: 1fr 1.6fr 0.8fr 1fr 0.8fr auto;">
+      <div class="field">
+        <label for="spInReference">Cargo reference</label>
+        <input type="text" id="spInReference" placeholder="e.g. B/L or chassis no." maxlength="40">
+      </div>
+      <div class="field">
+        <label for="spInCategory">Weight category</label>
+        <select id="spInCategory"></select>
+      </div>
+      <div class="field">
+        <label for="spInTransitLocal">Local / Transit</label>
+        <select id="spInTransitLocal">
+          <option value="Local">Local</option>
+          <option value="Transit">Transit</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="spInDate">Discharge date</label>
+        <input type="date" id="spInDate">
+      </div>
+      <div class="field">
+        <label for="spInFreeDays">Free days</label>
+        <input type="number" id="spInFreeDays" min="0" step="1" value="0">
+      </div>
+      <div class="field">
+        <button class="add-btn" id="spAddBtn">+ Add unit</button>
+      </div>
+    </div>
+    <p class="warn" id="spFormWarn" style="display:none;margin:10px 0 0;"></p>
+  </section>
+
+  <div class="toolbar">
+    <span class="hint" id="spCountHint">0 units</span>
+    <div class="actions">
+      <button class="ghost-btn" id="spExportCsvBtn">Export CSV</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Reference</th>
+          <th>Weight category</th>
+          <th>Local/Transit</th>
+          <th>Discharge date</th>
+          <th>Elapsed</th>
+          <th>Free days</th>
+          <th>Days payable</th>
+          <th>Rate/day</th>
+          <th>Total (US$)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="spTbody"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="9" style="text-align:right;">SUBTOTAL — SELF-PROPELLED STORAGE</td>
+          <td id="spGrandTotal">$0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="empty-state" id="spEmptyState">No self-propelled units yet — add one above to begin.</div>
+  </div>
+
+  <div class="combined-total-bar">
+    <span class="label">Tab total — Storage &amp; Remarshalling</span>
+    <span class="amt" id="tab1GrandTotal">$0.00</span>
+  </div>
+
+  </section>
+
+  <section id="tab2Panel" class="tab-panel hidden">
+
+  <h2 class="sub-section-title">Other Charges <span class="tag">one-time · reefer billed hourly</span></h2>
+  <div style="margin:-4px 0 16px;">
+    <label style="display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px;" for="asOfDateTime">As of (date &amp; time — used for reefer hours)</label>
+    <input type="datetime-local" id="asOfDateTime" style="font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--hairline);border-radius:3px;">
+  </div>
+
+  <section class="add-panel">
+    <h2>Add charge</h2>
+    <div class="oc-add-grid">
+      <div class="field">
+        <label id="ocReferenceLabel" for="ocInReference">Container number</label>
+        <input type="text" id="ocInReference" placeholder="e.g. CAAU7085328" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="ocInCategory">Cargo category</label>
+        <select id="ocInCategory"></select>
+      </div>
+      <div class="field" id="ocSizeField">
+        <label for="ocInSize">Size</label>
+        <select id="ocInSize">
+          <option value="20">20'</option>
+          <option value="40" selected>40'</option>
+        </select>
+      </div>
+      <div class="field hidden" id="ocUnitsField">
+        <label for="ocInUnits">Units</label>
+        <select id="ocInUnits">
+          <option value="1">1 Unit</option>
+          <option value="2">2 Units</option>
+        </select>
+      </div>
+      <div class="field hidden" id="ocTransitLocalField">
+        <label for="ocInTransitLocal">Local / Transit</label>
+        <select id="ocInTransitLocal">
+          <option value="Local">Local</option>
+          <option value="Transit">Transit</option>
+        </select>
+      </div>
+      <div class="field hidden" id="ocSPCategoryField">
+        <label for="ocInSPCategory">Weight category</label>
+        <select id="ocInSPCategory"></select>
+      </div>
+      <div class="field hidden" id="ocQuantityField">
+        <label for="ocInQuantity" id="ocQuantityLabel">Quantity</label>
+        <input type="number" id="ocInQuantity" min="0" step="0.01" value="1">
+      </div>
+      <div class="field checkbox-field hidden" id="ocReeferField">
+        <input type="checkbox" id="ocInReeferEnabled">
+        <label for="ocInReeferEnabled">Reefer plug-in</label>
+      </div>
+      <div class="field hidden" id="ocReeferStartField">
+        <label for="ocInReeferStart">Plug-in start</label>
+        <input type="datetime-local" id="ocInReeferStart">
+      </div>
+      <div class="field">
+        <button class="add-btn" id="ocAddBtn">+ Add charge</button>
+      </div>
+    </div>
+    <p class="warn" id="ocFormWarn" style="display:none;margin:10px 0 0;"></p>
+  </section>
+
+  <div class="toolbar">
+    <span class="hint" id="ocCountHint">0 charges</span>
+    <div class="actions">
+      <button class="ghost-btn" id="ocExportCsvBtn">Export CSV</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Reference</th>
+          <th>Category</th>
+          <th>Size/Units/Cat</th>
+          <th>Shore handling</th>
+          <th>Wharfage</th>
+          <th>IMCO</th>
+          <th>Reefer</th>
+          <th>Quayside/Terminal</th>
+          <th>Total (US$)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="ocTbody"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="9" style="text-align:right;">TOTAL — OTHER CHARGES</td>
+          <td id="ocGrandTotal">$0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="empty-state" id="ocEmptyState">No charges yet — add one above to begin.</div>
+  </div>
+
+  </section>
+
+</main>
+
+<div class="loading-screen" id="loadingScreen">Checking your subscription…</div>
+
+<footer class="app-footer"><p>Powered by Omlin Consultancy</p></footer>
+
+<script type="module">
+  import { requireActiveSubscription } from "./js/guard.js";
+  const navRoot = document.getElementById('navRoot');
+  requireActiveSubscription(navRoot, "app").then(() => {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('calcMain').style.display = 'block';
+    // Now that access is confirmed, load the calculator logic.
+    const s = document.createElement('script');
+    s.src = 'js/calculator.js';
+    document.body.appendChild(s);
+  });
+</script>
+</body>
+</html>

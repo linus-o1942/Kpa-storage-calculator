@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omlin Consultancy — Storage Charge Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="loading-screen">Loading Omlin Consultancy…</div>
+  <script type="module">
+    import { waitForAuth } from "./js/auth.js";
+    waitForAuth().then((user) => {
+      window.location.replace(user ? "app.html" : "login.html");
+    });
+  </script>
+</body>
+</html>

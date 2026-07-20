@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Subscription — Omlin Consultancy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="top"><div class="top-inner" id="navRoot"></div></header>
+
+<main id="mainContent" style="display:none;">
+  <div class="panel">
+    <h2>My Subscription</h2>
+    <p class="sub" id="statusLine">Loading your subscription status…</p>
+
+    <div class="status-grid">
+      <div class="stat-card"><div class="k">Current Plan</div><div class="v" id="statPlan">—</div></div>
+      <div class="stat-card"><div class="k">Activation Date</div><div class="v" id="statActivated" style="font-size:14px;">—</div></div>
+      <div class="stat-card"><div class="k">Expiry Date</div><div class="v" id="statExpires" style="font-size:14px;">—</div></div>
+      <div class="stat-card days"><div class="k">Days Remaining</div><div class="v" id="statDays">—</div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="ctaPanel" style="display:none;">
+    <h2 id="ctaTitle">Renew your subscription</h2>
+    <p class="sub" id="ctaSub">Your access has expired or you haven't subscribed yet.</p>
+    <a href="subscribe.html" class="btn gold block">Go to Subscription Page</a>
+  </div>
+</main>
+
+<div class="loading-screen" id="loadingScreen">Checking your account…</div>
+
+<footer class="app-footer"><p>Powered by Omlin Consultancy</p></footer>
+
+<script type="module">
+  import { requireLogin } from "./js/guard.js";
+  import { computeLiveStatus } from "./js/auth.js";
+
+  const navRoot = document.getElementById('navRoot');
+
+  requireLogin(navRoot, "account").then(({ profile }) => {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+
+    const live = computeLiveStatus(profile);
+    const fmt = (d) => d ? d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+
+    document.getElementById('statPlan').textContent = profile.plan && profile.plan !== 'none' ? profile.plan : 'No plan';
+    document.getElementById('statActivated').textContent = fmt(profile.activatedAt && profile.activatedAt.toDate ? profile.activatedAt.toDate() : null);
+    document.getElementById('statExpires').textContent = fmt(live.expiresDate || null);
+    document.getElementById('statDays').textContent = live.status === 'active' ? live.daysRemaining + 'd' : '0d';
+
+    const statusLine = document.getElementById('statusLine');
+    const ctaPanel = document.getElementById('ctaPanel');
+    if(live.status === 'active'){
+      statusLine.textContent = `Your subscription is active — you have full access to the calculator.`;
+    } else if(profile.plan === 'none'){
+      statusLine.textContent = `You don't have an active subscription yet.`;
+      ctaPanel.style.display = 'block';
+      document.getElementById('ctaTitle').textContent = 'Get started';
+      document.getElementById('ctaSub').textContent = 'Choose a plan to unlock the Storage Charge Calculator.';
+    } else {
+      statusLine.textContent = `Your subscription has expired.`;
+      ctaPanel.style.display = 'block';
+    }
+  });
+</script>
+</body>
+</html>

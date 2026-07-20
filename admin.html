@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — Omlin Consultancy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="top"><div class="top-inner" id="navRoot"></div></header>
+
+<main class="wide" id="mainContent" style="display:none;">
+  <div class="panel">
+    <h2>Admin Dashboard</h2>
+    <p class="sub">Verify M-Pesa payments in your own M-Pesa app first, then activate the matching user below. Changes save instantly and the user's access updates on their next page load.</p>
+    <p class="msg ok" id="okMsg"></p>
+    <p class="msg error" id="errMsg"></p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Plan</th>
+          <th>Status</th>
+          <th>Activated</th>
+          <th>Expires</th>
+          <th>Days Left</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="usersBody"></tbody>
+    </table>
+    <p class="msg" style="display:block;padding:20px;text-align:center;color:var(--ink-soft);" id="emptyState">Loading users…</p>
+  </div>
+</main>
+
+<div class="loading-screen" id="loadingScreen">Verifying admin access…</div>
+
+<footer class="app-footer"><p>Powered by Omlin Consultancy</p></footer>
+
+<script type="module">
+  import { requireAdmin } from "./js/guard.js";
+  import { db } from "./js/firebase-init.js";
+  import { computeLiveStatus } from "./js/auth.js";
+  import { PLANS } from "./js/firebase-config.js";
+  import {
+    collection, onSnapshot, doc, updateDoc, serverTimestamp, Timestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const navRoot = document.getElementById('navRoot');
+  const okMsg = document.getElementById('okMsg');
+  const errMsg = document.getElementById('errMsg');
+
+  requireAdmin(navRoot).then(() => {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+
+    onSnapshot(collection(db, "users"), (snap) => {
+      const tbody = document.getElementById('usersBody');
+      const empty = document.getElementById('emptyState');
+      tbody.innerHTML = "";
+
+      if(snap.empty){
+        empty.style.display = 'block';
+        empty.textContent = 'No users yet.';
+        return;
+      }
+      empty.style.display = 'none';
+
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a,b) => (a.name||'').localeCompare(b.name||''));
+
+      docs.forEach(u => {
+        const live = computeLiveStatus(u);
+        const fmt = (ts) => {
+          if(!ts || !ts.toDate) return '—';
+          return ts.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+        };
+        const statusClass = live.status === 'active' ? 'active' : (u.plan === 'none' ? 'none' : 'expired');
+        const statusLabel = live.status === 'active' ? 'Active' : (u.plan === 'none' ? 'No Plan' : 'Expired');
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(u.name || '—')}</td>
+          <td class="mono">${escapeHtml(u.email || '—')}</td>
+          <td>${escapeHtml(u.plan || 'none')}</td>
+          <td><span class="pill ${statusClass}">${statusLabel}</span></td>
+          <td class="mono">${fmt(u.activatedAt)}</td>
+          <td class="mono">${fmt(u.expiresAt)}</td>
+          <td class="mono">${live.status === 'active' ? live.daysRemaining + 'd' : '0d'}</td>
+          <td class="actions-cell">
+            <button class="btn small outline" data-act="2w" data-uid="${u.id}">Activate 2 Weeks</button>
+            <button class="btn small gold" data-act="1m" data-uid="${u.id}">Activate 1 Month</button>
+            <button class="btn small danger" data-act="off" data-uid="${u.id}">Deactivate</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }, (err) => {
+      errMsg.textContent = "Could not load users: " + err.message;
+      errMsg.classList.add('show');
+    });
+
+    document.getElementById('usersBody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if(!btn) return;
+      const uid = btn.dataset.uid;
+      const action = btn.dataset.act;
+      btn.disabled = true;
+      okMsg.classList.remove('show'); errMsg.classList.remove('show');
+
+      try{
+        if(action === 'off'){
+          await updateDoc(doc(db, "users", uid), {
+            subscriptionStatus: "inactive"
+          });
+          okMsg.textContent = "Subscription deactivated.";
+        } else {
+          const planKey = action === '2w' ? '2 Weeks' : '1 Month';
+          const plan = PLANS[planKey];
+          const now = Date.now();
+          await updateDoc(doc(db, "users", uid), {
+            plan: planKey,
+            subscriptionStatus: "active",
+            activatedAt: serverTimestamp(),
+            expiresAt: Timestamp.fromMillis(now + plan.days * 86400000)
+          });
+          okMsg.textContent = `Activated "${planKey}" — expires in ${plan.days} days from now.`;
+        }
+        okMsg.classList.add('show');
+      }catch(ex){
+        errMsg.textContent = "Update failed: " + ex.message;
+        errMsg.classList.add('show');
+      }
+      btn.disabled = false;
+    });
+  });
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+</script>
+</body>
+</html>

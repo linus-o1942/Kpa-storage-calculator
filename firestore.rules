@@ -1,0 +1,92 @@
+rules_version = '2';
+
+// ===========================================================
+// OMLIN CONSULTANCY LTD — Firestore Security Rules
+// ===========================================================
+// Deploy with: firebase deploy --only firestore:rules
+// (or paste into Firebase Console -> Firestore Database -> Rules)
+//
+// Collections:
+//   /users/{uid}   one document per registered user
+//   /admins/{uid}  presence of a document here = that uid is an admin
+//                  (create these manually in the console — see README)
+// ===========================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Fields a user is NEVER allowed to set themselves.
+    function subscriptionFieldsUnchanged() {
+      return request.resource.data.plan == resource.data.plan &&
+             request.resource.data.expiresAt == resource.data.expiresAt &&
+             request.resource.data.activatedAt == resource.data.activatedAt;
+    }
+
+    // The one narrow self-service exception: the app is allowed to flip
+    // a user's own status from "active" to "expired" once expiresAt has
+    // genuinely passed, using the server's own clock (request.time) —
+    // never a value the client can control. It can never go the other way.
+    function selfExpireAllowed() {
+      return resource.data.subscriptionStatus == 'active' &&
+             request.resource.data.subscriptionStatus == 'expired' &&
+             resource.data.expiresAt < request.time;
+    }
+
+    function statusUnchangedOrSelfExpire() {
+      return request.resource.data.subscriptionStatus == resource.data.subscriptionStatus ||
+             selfExpireAllowed();
+    }
+
+    match /users/{userId} {
+      // Users can read their own profile; admins can read everyone's
+      // (needed for the admin dashboard table).
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Account creation happens once, right after signup, and must use
+      // the safe defaults defined in the app (plan:"none", status:"inactive").
+      allow create: if isOwner(userId) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.plan == 'none' &&
+        request.resource.data.subscriptionStatus == 'inactive' &&
+        request.resource.data.activatedAt == null &&
+        request.resource.data.expiresAt == null;
+
+      // Admins may update anything (activate / deactivate subscriptions).
+      // A user may only update their own doc, and only if the protected
+      // subscription fields are left untouched (aside from the narrow
+      // self-expire transition above).
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        subscriptionFieldsUnchanged() &&
+        statusUnchangedOrSelfExpire()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Admin membership list. Managed manually from the Firebase Console.
+    // A signed-in user may read ONLY their own admin doc — this lets the
+    // client check "am I an admin?" (isAdminUser()) without being able to
+    // read or enumerate anyone else's admin status. Writes are always
+    // blocked from the client. The isAdmin() function above additionally
+    // uses exists(), which works during rule evaluation regardless of this
+    // read rule (that's a separate mechanism from a direct client read).
+    match /admins/{adminId} {
+      allow read: if isOwner(adminId);
+      allow write: if false;
+    }
+  }
+}
