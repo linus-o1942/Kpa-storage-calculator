@@ -104,9 +104,17 @@
   .upload-btn{ font-family:var(--sans); font-weight:600; font-size:13.5px; background:#fff; color:var(--brand-navy); border:1.5px solid var(--brand-navy); border-radius:2px; padding:9px 18px; cursor:pointer; white-space:nowrap; }
   .upload-btn:hover{ background:var(--brand-gold-bg); border-color:var(--brand-gold); }
   #docFileInput{ display:none; }
+  #ocDocFileInput{ display:none; }
   .parse-banner{ width:100%; margin-top:10px; padding:10px 12px; border-radius:2px; font-family:var(--mono); font-size:12px; display:none; }
   .parse-banner.ok{ background:#E8F3EC; color:var(--ok); border:1px solid #C6E4CF; display:block; }
   .parse-banner.err{ background:#FBEDEB; color:var(--danger); border:1px solid #F0CFC9; display:block; }
+  .parse-banner.confirm{ background:#FBEADC; color:#8A5A1E; border:1px solid #F0CFA0; display:block; line-height:1.6; }
+  .parse-banner.confirm .confirm-actions{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .parse-banner.confirm .confirm-btn{ font-family:var(--mono); font-size:11.5px; letter-spacing:.02em; padding:7px 12px; border-radius:2px; cursor:pointer; border:1.5px solid transparent; }
+  .parse-banner.confirm .confirm-btn.yes{ background:var(--brand-navy); color:#fff; border-color:var(--brand-navy); }
+  .parse-banner.confirm .confirm-btn.yes:hover{ background:var(--brand-navy-deep); }
+  .parse-banner.confirm .confirm-btn.no{ background:#fff; color:#8A5A1E; border-color:#D97B2E; }
+  .parse-banner.confirm .confirm-btn.no:hover{ background:#FBEADC; }
 
   .page-title{ margin-bottom:18px; }
   .page-title .eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 6px; }
@@ -170,7 +178,7 @@
   <section class="upload-panel">
     <div class="info">
       <h2>Upload container document</h2>
-      <p>Upload a saved KPA container-detail webpage (.html) to auto-fill Container Number, Size and Discharge Date below. Category is always selected manually.</p>
+      <p>Upload a saved KPA container-detail webpage (.html) to auto-fill Container Number, Size, Discharge Date and Category below. Dangerous Cargo and Transit/Local are detected automatically; Out of Gauge requires your confirmation. You can always change the category manually.</p>
     </div>
     <div>
       <button class="upload-btn" id="uploadDocBtn">Upload webpage document</button>
@@ -338,6 +346,18 @@
     <label style="display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px;" for="asOfDateTime">As of (date &amp; time — used for reefer hours)</label>
     <input type="datetime-local" id="asOfDateTime" style="font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--hairline);border-radius:3px;">
   </div>
+
+  <section class="upload-panel">
+    <div class="info">
+      <h2>Upload container document</h2>
+      <p>Upload a saved KPA container-detail webpage (.html) to auto-fill Container Number and Size below. Cargo category is always selected manually on this tab.</p>
+    </div>
+    <div>
+      <button class="upload-btn" id="ocUploadDocBtn">Upload webpage document</button>
+      <input type="file" id="ocDocFileInput" accept=".html,.htm,text/html">
+    </div>
+    <p class="parse-banner" id="ocParseBanner"></p>
+  </section>
 
   <section class="add-panel">
     <h2>Add charge</h2>
