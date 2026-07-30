@@ -324,6 +324,56 @@ function findValueByLabel(doc, labelText){
   }
   return null;
 }
+/* ---- Automatic category detection ----
+   Priority: 1) Dangerous Cargo (IMDG / UNNo)  2) Out of Gauge (SzTp, needs confirmation)
+             3) Transit / Local (FND) */
+function detectCategory(doc, szTpRaw){
+  const imdgRaw = findValueByLabel(doc, 'IMDG / UNNo');
+  const fndRaw = findValueByLabel(doc, 'FND');
+
+  const detection = {
+    category: null,       // final/proposed category to apply
+    needsConfirm: false,  // true only for the Out of Gauge case
+    reason: null,         // human-readable reason for the detected category
+    fallbackCategory: null, // where to fall back to if OOG is rejected
+    imdgRaw, fndRaw, szTpRaw
+  };
+
+  // 1) Dangerous Cargo — IMDG / UNNo field holds a value like "9/3084"
+  const imdgClean = (imdgRaw || '').replace(/\//g, '').replace(/\s+/g, '');
+  if(imdgClean){
+    detection.category = 'Dangerous Cargo';
+    detection.reason = `IMDG / UNNo = "${imdgRaw}"`;
+    return detection;
+  }
+
+  // Work out the Transit/Local fallback from FND up front, since it is
+  // needed both as the default classification and as the OOG fallback.
+  let fndCategory = null;
+  if(fndRaw){
+    fndCategory = fndRaw.trim().toUpperCase() === 'KE' ? 'Local Import' : 'Transit Import';
+  }
+  detection.fallbackCategory = fndCategory;
+
+  // 2) Out of Gauge — SzTp contains the letter "P" (e.g. 22P1, 42P1, 45P3)
+  if(szTpRaw && /P/i.test(szTpRaw)){
+    detection.category = 'Out of Gauge';
+    detection.needsConfirm = true;
+    detection.reason = `SzTp = "${szTpRaw}"`;
+    return detection;
+  }
+
+  // 3) Transit or Local — based on FND
+  if(fndCategory){
+    detection.category = fndCategory;
+    detection.reason = `FND = "${fndRaw}"`;
+  } else {
+    detection.reason = 'FND not found — set category manually';
+  }
+
+  return detection;
+}
+
 function parseKPADocument(htmlText){
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
 
@@ -357,12 +407,47 @@ function parseKPADocument(htmlText){
     result.warnings.push('Gate In Date not found');
   }
 
+  result.detection = detectCategory(doc, szTpRaw);
+
   return result;
 }
 
 document.getElementById('uploadDocBtn').addEventListener('click', () => {
   document.getElementById('docFileInput').click();
 });
+
+function applyDetectedCategory(category){
+  const sel = document.getElementById('inCategory');
+  if(sel && category) sel.value = category;
+}
+
+function renderOOGConfirmBanner(detection, filledSummary, warningsSummary){
+  const banner = document.getElementById('parseBanner');
+  const fallback = detection.fallbackCategory || 'Local Import';
+  banner.className = 'parse-banner confirm';
+  banner.innerHTML =
+    `${filledSummary}<br>` +
+    `<b>&#9888; This container appears to be Out of Gauge</b> based on its SzTp value ` +
+    `(<b>${detection.szTpRaw}</b>). Please confirm this classification is correct before proceeding.` +
+    `<span class="confirm-actions">` +
+      `<button type="button" class="confirm-btn yes" id="oogConfirmYes">Confirm Out of Gauge</button>` +
+      `<button type="button" class="confirm-btn no" id="oogConfirmNo">Not OOG — use ${fallback}</button>` +
+    `</span>` +
+    (warningsSummary ? `<br>${warningsSummary}` : '');
+
+  applyDetectedCategory('Out of Gauge');
+
+  document.getElementById('oogConfirmYes').addEventListener('click', () => {
+    applyDetectedCategory('Out of Gauge');
+    banner.className = 'parse-banner ok';
+    banner.textContent = `${filledSummary} · Category: Out of Gauge (confirmed). Click "+ Add container".`;
+  });
+  document.getElementById('oogConfirmNo').addEventListener('click', () => {
+    applyDetectedCategory(fallback);
+    banner.className = 'parse-banner ok';
+    banner.textContent = `${filledSummary} · Category: ${fallback} (Out of Gauge not confirmed). Click "+ Add container".`;
+  });
+}
 
 document.getElementById('docFileInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
@@ -377,10 +462,59 @@ document.getElementById('docFileInput').addEventListener('change', (e) => {
       if(parsed.size){ document.getElementById('inSize').value = parsed.size; filled.push('Size: ' + parsed.size + "'"); }
       if(parsed.date){ document.getElementById('inDate').value = parsed.date; filled.push('Discharge Date: ' + parsed.date); }
 
+      const det = parsed.detection;
+      if(det && det.category){
+        if(det.needsConfirm){
+          // Out of Gauge — requires explicit user confirmation before it is finalised.
+          const filledSummary = 'Loaded from document — ' + filled.join(' · ') + '.';
+          const warningsSummary = parsed.warnings.length ? parsed.warnings.join('; ') : '';
+          renderOOGConfirmBanner(det, filledSummary, warningsSummary);
+          e.target.value = "";
+          return;
+        }
+        applyDetectedCategory(det.category);
+        filled.push('Category: ' + det.category + (det.reason ? ' (' + det.reason + ')' : ''));
+      }
+
       if(filled.length){
         banner.className = 'parse-banner ok';
         banner.textContent = 'Loaded from document — ' + filled.join(' · ') +
-          '. Select the category, then click "+ Add container".' +
+          '. Category was set automatically — change it if needed, then click "+ Add container".' +
+          (parsed.warnings.length ? '  (' + parsed.warnings.join('; ') + ')' : '');
+      } else {
+        banner.className = 'parse-banner err';
+        banner.textContent = 'Could not find container details in this document. ' + parsed.warnings.join('; ');
+      }
+    }catch(err){
+      banner.className = 'parse-banner err';
+      banner.textContent = 'Could not read this file — please upload the saved container-detail webpage (.html).';
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+/* ---- OTHER CHARGES TAB: same document upload, number + size only (category stays manual) ---- */
+document.getElementById('ocUploadDocBtn').addEventListener('click', () => {
+  document.getElementById('ocDocFileInput').click();
+});
+
+document.getElementById('ocDocFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const banner = document.getElementById('ocParseBanner');
+    try{
+      const parsed = parseKPADocument(evt.target.result);
+      let filled = [];
+      if(parsed.number){ document.getElementById('ocInReference').value = parsed.number; filled.push('Container Number: ' + parsed.number); }
+      if(parsed.size){ document.getElementById('ocInSize').value = parsed.size; filled.push('Size: ' + parsed.size + "'"); }
+
+      if(filled.length){
+        banner.className = 'parse-banner ok';
+        banner.textContent = 'Loaded from document — ' + filled.join(' · ') +
+          '. Select the cargo category, then click "+ Add charge".' +
           (parsed.warnings.length ? '  (' + parsed.warnings.join('; ') + ')' : '');
       } else {
         banner.className = 'parse-banner err';
@@ -619,7 +753,7 @@ function generateWordReport(){
     <body>
       <div style='mso-element:footer' id="f1">
         <p class="MsoFooter" style="text-align:center;border-top:1.5pt solid #C9A24A;padding-top:5pt;color:#153152;font-weight:bold;">
-          <i>Powered by Omlin Consultancy</i>
+          <i>Powered by OmlinC</i>
         </p>
       </div>
 
@@ -632,7 +766,6 @@ function generateWordReport(){
                   <div style="width:30pt;height:30pt;border:1.5pt solid #C9A24A;border-radius:6pt;text-align:center;line-height:30pt;color:#C9A24A;font-family:'Arial',sans-serif;font-size:13pt;">&#9875;</div>
                 </td>
                 <td style="vertical-align:middle;padding-left:8pt;">
-                  <div style="font-family:'Arial',sans-serif;color:#ffffff;font-size:15pt;font-weight:bold;letter-spacing:0.5pt;">OMLIN CONSULTANCY LTD</div>
                   <div style="font-family:'Arial',sans-serif;color:#E7D8A9;font-size:8pt;letter-spacing:1pt;">SHIPPING &middot; CUSTOMS &middot; LOGISTICS</div>
                 </td>
               </tr></table>
@@ -702,14 +835,10 @@ function generatePDFReport(){
     doc.line(40, 34, 40, 44);
     doc.line(34, 38, 46, 38);
 
-    doc.setTextColor(255,255,255);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(14);
-    doc.text('OMLIN CONSULTANCY LTD', 64, 30);
     doc.setFont('helvetica','normal');
     doc.setFontSize(8.5);
     doc.setTextColor(231,216,169);
-    doc.text('SHIPPING  ·  CUSTOMS  ·  LOGISTICS', 64, 42);
+    doc.text('SHIPPING  ·  CUSTOMS  ·  LOGISTICS', 64, 40);
 
     doc.setFont('helvetica','bold');
     doc.setFontSize(11);
@@ -731,7 +860,7 @@ function generatePDFReport(){
       doc.setFont('helvetica','italic');
       doc.setFontSize(9);
       doc.setTextColor(...navy);
-      doc.text('Powered by Omlin Consultancy', pageW/2, pageH - 28, { align:'center' });
+      doc.text('Powered by OmlinC', pageW/2, pageH - 28, { align:'center' });
       doc.setFont('helvetica','normal');
       doc.setFontSize(8);
       doc.setTextColor(...inkSoft);
