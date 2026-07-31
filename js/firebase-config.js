@@ -1,5 +1,5 @@
 // ===========================================================
-// OMLIN CONSULTANCY LTD — Firebase project configuration
+// OmlinC — Firebase project configuration
 // ===========================================================
 // Replace every value below with the config object from:
 // Firebase Console -> Project Settings -> General -> Your apps -> SDK setup and configuration

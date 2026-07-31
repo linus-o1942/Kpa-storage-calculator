@@ -1,5 +1,5 @@
 // ===========================================================
-// OMLIN CONSULTANCY LTD — Authentication helpers
+// OmlinC — Authentication helpers
 // ===========================================================
 import { auth, db } from "./firebase-init.js";
 import {
@@ -89,7 +89,7 @@ export function renderNav(el, { activePage, user, profile, isAdmin }){
     <a class="brand-row" href="${user ? 'app.html' : 'login.html'}">
       <span class="brand-logo">${logoSvg()}</span>
       <span class="brand-name">
-        <span class="co">OMLIN CONSULTANCY LTD</span>
+        <span class="co">OmlinC</span>
         <span class="tag">Shipping · Customs · Logistics</span>
       </span>
     </a>

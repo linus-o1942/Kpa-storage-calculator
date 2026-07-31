@@ -1,5 +1,5 @@
 // ===========================================================
-// OMLIN CONSULTANCY LTD — Firebase initialization
+// OmlinC — Firebase initialization
 // Loaded as an ES module. No build step required — works as-is on Netlify.
 // ===========================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";

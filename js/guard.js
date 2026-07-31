@@ -1,5 +1,5 @@
 // ===========================================================
-// OMLIN CONSULTANCY LTD — Access control guard
+// OmlinC — Access control guard
 // ===========================================================
 // Every protected page calls requireActiveSubscription() (or
 // requireAdmin() for the admin dashboard) before revealing any content.
