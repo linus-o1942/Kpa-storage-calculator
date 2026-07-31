@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Subscribe — Omlin Consultancy</title>
+<title>Subscribe — OmlinC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
@@ -58,7 +58,7 @@
 
 <div class="loading-screen" id="loadingScreen">Loading…</div>
 
-<footer class="app-footer"><p>Powered by Omlin Consultancy</p></footer>
+<footer class="app-footer"><p>Powered by OmlinC</p></footer>
 
 <script type="module">
   import { requireLogin } from "./js/guard.js";
@@ -77,7 +77,7 @@
     function buildLink(planKey){
       const plan = PLANS[planKey];
       const message =
-        `Hello Omlin Consultancy, I would like to subscribe to the ${plan.label} plan (KSh ${plan.price}).\n\n` +
+        `Hello OmlinC, I would like to subscribe to the ${plan.label} plan (KSh ${plan.price}).\n\n` +
         `Name: ${name}\nAccount email: ${email}\n\n` +
         `I have paid via M-Pesa Till Number ${PAYMENT_INFO.tillNumber}. My M-Pesa confirmation message is below — please verify and activate my subscription:\n\n[paste your M-Pesa confirmation SMS here]`;
       return "https://wa.me/" + PAYMENT_INFO.whatsappNumber + "?text=" + encodeURIComponent(message);

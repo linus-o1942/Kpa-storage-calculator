@@ -1,7 +1,7 @@
 {
-  "name": "Omlin Consultancy — Storage Charge Calculator",
+  "name": "OmlinC — Storage Charge Calculator",
   "short_name": "Omlin Calc",
-  "description": "Storage Charge Calculator — Omlin Consultancy Ltd",
+  "description": "Storage Charge Calculator — OmlinC",
   "start_url": "app.html",
   "scope": "./",
   "display": "standalone",

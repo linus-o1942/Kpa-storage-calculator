@@ -1,4 +1,4 @@
-# Omlin Consultancy — Storage Charge Calculator + Subscriptions
+# OmlinC — Storage Charge Calculator + Subscriptions
 
 A Firebase-backed subscription system in front of the Storage Charge
 Calculator. Users sign up, subscribe by paying via M-Pesa Till and sending

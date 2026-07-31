@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // ===========================================================
-// OMLIN CONSULTANCY LTD — Firestore Security Rules
+// OmlinC — Firestore Security Rules
 // ===========================================================
 // Deploy with: firebase deploy --only firestore:rules
 // (or paste into Firebase Console -> Firestore Database -> Rules)
